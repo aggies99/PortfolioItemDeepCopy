@@ -2,7 +2,7 @@
    "name": "Portfolio Deep Copy",
    "className": "CustomApp",
    "server": "https://rally1.rallydev.com",
-   "sdk": "2.0p5",
+   "sdk": "2.0rc1",
    "javascript": [
       "App.js"
    ],

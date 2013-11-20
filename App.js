@@ -7,17 +7,16 @@ Ext.define('CustomApp', {
         
         MyApp.globalContext = this.getContext().getDataContext();
         
-        console.log( MyApp.globalContext );
-
         MyApp.epicList = [];
-        MyApp.selectedEpic = "All MMFs"
+        MyApp.defaultEpic = MyApp.selectedEpic = "No Filter";
         MyApp.epicList.push( MyApp.selectedEpic );
         MyApp.mmfList = [];
-        MyApp.selectedMMF = "All Features"
+        MyApp.defaultMMF = MyApp.selectedMMF = "All MMFs";
         MyApp.mmfList.push( MyApp.selectedMMF );
         MyApp.featureList = [];
-        MyApp.selectedFeature = "None"
+        MyApp.defaultFeature = MyApp.selectedFeature = "None";
         MyApp.featureList.push( MyApp.selectedFeature );
+        
 
         // Load the program list and create the program combobox
         MyApp._loadPortfolioEpics();
@@ -71,8 +70,7 @@ Ext.define('CustomApp', {
             listeners: {
                 'change': function(combo, newVal) {
                     MyApp.selectedEpic = newVal.split(":")[0];
-                    console.log( MyApp.selectedEpic );
-                    
+
                     MyApp._loadPortfolioMMFs();
                 }
             }
@@ -97,7 +95,7 @@ Ext.define('CustomApp', {
         // Update the filter
         var myEpicFilter = [];
         
-        if ( MyApp.selectedEpic != "All MMFs" ) {
+        if ( MyApp.selectedEpic != MyApp.defaultEpic ) {
             myEpicFilter = Ext.create('Rally.data.QueryFilter', {
                 property: 'Parent.FormattedID',
                 operator: "=",
@@ -105,8 +103,6 @@ Ext.define('CustomApp', {
             });
         }
 
-        console.log( myEpicFilter );
-        
         Ext.create('Rally.data.WsapiDataStore', {
             autoLoad: true,
             limit: Infinity,
@@ -139,7 +135,7 @@ Ext.define('CustomApp', {
     
     _drawMMFComboBox: function() {
         
-        if( MyApp.mmfCombo != undefined) {
+        if( MyApp.mmfCombo !== undefined) {
             MyApp.programPane.remove(MyApp.mmfCombo);
         }
         MyApp.mmfCombo = Ext.create('Ext.form.ComboBox', {
@@ -151,7 +147,6 @@ Ext.define('CustomApp', {
             listeners: {
                 'change': function(combo, newVal) {
                     MyApp.selectedMMF = newVal.split(":")[0];
-                    console.log( MyApp.selectedMMF );
                     
                     MyApp._loadPortfolioFeatures();
                 }
@@ -170,7 +165,7 @@ Ext.define('CustomApp', {
         // Update the filter
         var myFeatureFilter = [];
         
-        if ( MyApp.selectedMMF != "All Features" ) {
+        if ( MyApp.selectedMMF != MyApp.defaultMMF ) {
             myFeatureFilter = Ext.create('Rally.data.QueryFilter', {
                 property: 'Parent.FormattedID',
                 operator: "=",
@@ -178,8 +173,6 @@ Ext.define('CustomApp', {
             });
         }
 
-        console.log( myFeatureFilter );
-        
         Ext.create('Rally.data.WsapiDataStore', {
             autoLoad: true,
             limit: Infinity,
@@ -199,7 +192,6 @@ Ext.define('CustomApp', {
             
             listeners: {
                 load: function( myStore, records ) {
-                    console.log( records );
                     var index=0;
                     for (index=0; index<records.length; index++) {
                         MyApp.featureList.push( records[index].data.FormattedID + ": " + records[index].data.Name );
@@ -212,7 +204,7 @@ Ext.define('CustomApp', {
     
     _drawFeatureComboBox: function() {
         
-        if( MyApp.featureCombo != undefined) {
+        if( MyApp.featureCombo !== undefined) {
             MyApp.programPane.remove(MyApp.featureCombo);
         }
         MyApp.featureCombo = Ext.create('Ext.form.ComboBox', {
@@ -223,10 +215,9 @@ Ext.define('CustomApp', {
 
             listeners: {
                 'change': function(combo, newVal) {
-                    MyApp.selectedFeature = newVal;
-                    console.log( MyApp.selectedFeature );
+                    MyApp.selectedFeature = newVal.split(":")[0];
                     
-                    //MyApp._loadProgramDetails();
+                    MyApp._drawCopyButton();
                 }
             }
         });
@@ -234,6 +225,83 @@ Ext.define('CustomApp', {
         MyApp.programPane.add(MyApp.featureCombo);
 
         MyApp.featureCombo.setValue(MyApp.featureList[0]);
+        
+        MyApp._drawCopyButton();
+    },
+    
+    _determineWhatToCopy: function() {
+        MyApp.CopyId = "Nothing";
+        
+        if(MyApp.selectedFeature != MyApp.defaultFeature)
+        {
+            MyApp.CopyId = MyApp.selectedFeature;
+        }
+        else if(MyApp.selectedMMF != MyApp.defaultMMF)
+        {
+            MyApp.CopyId = MyApp.selectedMMF;   
+        }
+        else if(MyApp.selectedEpic != MyApp.defaultEpic)
+        {
+            MyApp.CopyId = MyApp.selectedEpic;
+        } 
+        
+        return MyApp.CopyId;
+    },
+    
+    _drawCopyButton: function() {
+        if( MyApp.copyButton !== undefined) {
+            MyApp.programPane.remove(MyApp.copyButton);
+        }
+        
+        MyApp.copyButton = Ext.create('Ext.Container', {
+            items: [{
+                xtype: 'rallybutton',
+                text: 'Copy ' + MyApp._determineWhatToCopy(),
+                handler: MyApp._copyButtonHandler
+            }]
+        });
+        MyApp.programPane.add(MyApp.copyButton);
+    },
+    
+    _copyButtonHandler: function() {
+        var modelType = "PortfolioItem";
+        if ( MyApp.CopyId[0] === 'E' ) {
+            modelType += "/Epic";
+        }
+        else if ( MyApp.CopyId[0] === 'M' ) {
+            modelType += "/MMF";
+        }
+        else if ( MyApp.CopyId[0] === 'F' ) {
+            modelType += "/Feature";
+        }
+
+        Ext.create('Rally.data.WsapiDataStore', {
+            autoLoad: true,
+
+            model: modelType,
+            
+            context: MyApp.globalContext,
+            
+            filters: [
+                {
+                    property: 'FormattedID',
+                    operator: '=',
+                    value: MyApp.CopyId
+                }
+            ],
+            
+            listeners: {
+                load: function( myStore, records ) {
+                    console.log( records );
+                    MyApp._startCopy();
+                }
+            }
+        });
+        
+    },
+    
+    _startCopy: function() {
+        
     }
     
 
