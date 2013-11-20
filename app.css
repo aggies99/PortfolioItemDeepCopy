@@ -1,0 +1,12 @@
+.app {
+     /* Add app styles here */
+}
+
+.inner {
+    padding: 10px;
+}
+
+.epicList {
+    float: left;
+    width: 100%;
+}

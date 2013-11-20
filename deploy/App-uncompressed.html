@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Portfolio Deep Copy</title>
+
+    <script type="text/javascript" src="/apps/2.0p5/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function () {
+                Ext.define('CustomApp', {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+
+    launch: function() {
+        MyApp = this;
+        
+        MyApp.globalContext = this.getContext().getDataContext();
+
+        MyApp.epicList = [];
+        MyApp.mmfList = [];
+        MyApp.featureList = [];
+
+        // Load the program list and create the program combobox
+        MyApp._loadPortfolioEpics();
+    },
+    
+    _wrapComponent: function(component, cls) {
+        var wrapper = Ext.create('Ext.container.Container', {
+            componentCls: cls
+        });
+        
+        wrapper.add(component);
+        
+        return wrapper;
+    },
+    
+    _loadPortfolioEpics: function() {
+        Ext.create('Rally.data.WsapiDataStore', {
+            autoLoad: true,
+                
+            model: 'PortfolioItem',
+            
+            context: MyApp.globalContext,
+            
+            fetch: ['Name','FormattedID'],
+                
+            sorters: {
+                property: 'Rank',
+                direction: 'ASC'
+            },
+            
+            listeners: {
+                load: function( myStore, records ) {
+                    var index=0;
+                    for (index=0; index<records.length; index++) {
+                        MyApp.epicList.push( records[index].data.FormattedID & ": " & records[index].data.Name );
+                    }
+                    MyApp._drawComboBox();
+                }
+            }
+        });
+    },
+    
+    _drawComboBox: function() {
+        MyApp.combo = Ext.create('Ext.form.ComboBox', {
+            fieldLabel: 'Program',
+
+            store: MyApp.epicList,
+
+            listeners: {
+                'change': function(combo, newVal) {
+                    MyApp.selectedEpicName = newVal;
+                    
+                    //MyApp._loadProgramDetails();
+                }
+            }
+        });
+
+        MyApp.programPane = Ext.create('Ext.container.Container', {
+            componentCls: 'inner'
+        });
+
+        MyApp.add(MyApp._wrapComponent(MyApp.programPane, 'epicList'));
+        
+        MyApp.programPane.add(MyApp.combo);
+    }
+});
+
+
+            Rally.launchApp('CustomApp', {
+                name:"Portfolio Deep Copy",
+	            parentRepos:""
+            });
+
+        });
+    </script>
+
+
+    <style type="text/css">
+        .app {
+     /* Add app styles here */
+}
+
+.inner {
+    padding: 10px;
+}
+
+.epicList {
+    float: left;
+    width: 100%;
+}
+
+    </style>
+</head>
+<body></body>
+</html>
