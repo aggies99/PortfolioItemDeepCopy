@@ -8,13 +8,13 @@ Ext.define('CustomApp', {
         MyApp.globalContext = this.getContext().getDataContext();
         
         MyApp.epicList = [];
-        MyApp.defaultEpic = MyApp.selectedEpic = "No Filter";
+        MyApp.defaultEpic = MyApp.selectedEpic = "All Epics";
         MyApp.epicList.push( MyApp.selectedEpic );
         MyApp.mmfList = [];
         MyApp.defaultMMF = MyApp.selectedMMF = "All MMFs";
         MyApp.mmfList.push( MyApp.selectedMMF );
         MyApp.featureList = [];
-        MyApp.defaultFeature = MyApp.selectedFeature = "None";
+        MyApp.defaultFeature = MyApp.selectedFeature = "All Features";
         MyApp.featureList.push( MyApp.selectedFeature );
         
 
@@ -54,6 +54,7 @@ Ext.define('CustomApp', {
                     for (index=0; index<records.length; index++) {
                         MyApp.epicList.push( records[index].data.FormattedID + ": " + records[index].data.Name );
                     }
+                    //Ext.getBody().mask("Loading...");
                     MyApp._drawEpicComboBox();
                 }
             }
@@ -71,6 +72,7 @@ Ext.define('CustomApp', {
                 'change': function(combo, newVal) {
                     MyApp.selectedEpic = newVal.split(":")[0];
 
+                    //Ext.getBody().mask("Loading...");
                     MyApp._loadPortfolioMMFs();
                 }
             }
@@ -84,9 +86,8 @@ Ext.define('CustomApp', {
         
         MyApp.programPane.add(MyApp.epicCombo);
         
-        //MyApp._loadPortfolioMMFs();
-        
-        MyApp.epicCombo.setValue(MyApp.epicList[0]);
+        //MyApp.epicCombo.setValue(MyApp.epicList[0]);
+        MyApp.epicCombo.setValue(MyApp.epicList[1]);
     },
 
     _loadPortfolioMMFs: function() {
@@ -122,7 +123,6 @@ Ext.define('CustomApp', {
             
             listeners: {
                 load: function( myStore, records ) {
-                    console.log( records );
                     var index=0;
                     for (index=0; index<records.length; index++) {
                         MyApp.mmfList.push( records[index].data.FormattedID + ": " + records[index].data.Name );
@@ -148,6 +148,7 @@ Ext.define('CustomApp', {
                 'change': function(combo, newVal) {
                     MyApp.selectedMMF = newVal.split(":")[0];
                     
+                    //Ext.getBody().mask("Loading...");
                     MyApp._loadPortfolioFeatures();
                 }
             }
@@ -156,7 +157,8 @@ Ext.define('CustomApp', {
         MyApp.programPane.add(MyApp.mmfCombo);
 
         //MyApp._loadPortfolioFeatures();
-        MyApp.mmfCombo.setValue(MyApp.mmfList[0]);
+        //MyApp.mmfCombo.setValue(MyApp.mmfList[0]);
+        MyApp.mmfCombo.setValue(MyApp.mmfList[1]);
     },
 
     _loadPortfolioFeatures: function() {
@@ -224,9 +226,11 @@ Ext.define('CustomApp', {
 
         MyApp.programPane.add(MyApp.featureCombo);
 
-        MyApp.featureCombo.setValue(MyApp.featureList[0]);
+        //MyApp.featureCombo.setValue(MyApp.featureList[0]);
+        MyApp.featureCombo.setValue(MyApp.featureList[1]);
         
         MyApp._drawCopyButton();
+        //Ext.getBody().unmask();
     },
     
     _determineWhatToCopy: function() {
@@ -260,49 +264,75 @@ Ext.define('CustomApp', {
                 handler: MyApp._copyButtonHandler
             }]
         });
-        MyApp.programPane.add(MyApp.copyButton);
+        
+        if ( MyApp.CopyId != "Nothing" ) {
+            MyApp.programPane.add(MyApp.copyButton);
+        }
     },
     
     _copyButtonHandler: function() {
-        var modelType = "PortfolioItem";
-        if ( MyApp.CopyId[0] === 'E' ) {
-            modelType += "/Epic";
+        MyApp.featuresToCopy = [];
+        
+        if ( MyApp.defaultFeature !== MyApp.selectedFeature ) {
+            MyApp.featuresToCopy = [ MyApp.selectedFeature ];
         }
-        else if ( MyApp.CopyId[0] === 'M' ) {
-            modelType += "/MMF";
+        else {
+            for (index=1; index<MyApp.featureList.length; index++) {
+                MyApp.featuresToCopy[index-1] = MyApp.featureList[index].split(":")[0];
+            }
         }
-        else if ( MyApp.CopyId[0] === 'F' ) {
-            modelType += "/Feature";
+    
+        for (index=0; index<MyApp.featuresToCopy.length; index++) {
+            MyApp.singleFeatureToCopy = MyApp.featuresToCopy[index];
+            MyApp._userStoryDeepCopy( 1 );
         }
+    },
+    
+    _userStoryDeepCopy: function ( currentPage ) {
+        thisStore = Ext.create('Rally.data.WsapiDataStore', {
+            pageSize: 1,    // Load 1 page at a time
+            limit: 1,       // Limit to 1
 
-        Ext.create('Rally.data.WsapiDataStore', {
-            autoLoad: true,
-
-            model: modelType,
+            model: "UserStory",
             
             context: MyApp.globalContext,
-            
+            fetch: ["FormattedID", "Parent", "Feature"],
             filters: [
                 {
-                    property: 'FormattedID',
+                    property: 'Feature.FormattedID',
                     operator: '=',
-                    value: MyApp.CopyId
+                    value: MyApp.singleFeatureToCopy
+                },
+                {
+                    property: 'Parent',
+                    operator: '=',
+                    value: null
                 }
             ],
             
             listeners: {
                 load: function( myStore, records ) {
                     console.log( records );
-                    MyApp._startCopy();
+
+                    // If there are items, then copy them
+                    if ( myStore.totalCount > 0 ) {
+                        MyApp._startCopy( records[0].data.FormattedID );
+                        
+                        // Load the next until all pages are loaded
+                        if ( myStore.currentPage < myStore.totalCount )
+                        {
+                            MyApp._userStoryDeepCopy( myStore.currentPage+1 );
+                        }
+                    }
                 }
             }
         });
         
+        thisStore.loadPage( currentPage );
     },
     
-    _startCopy: function() {
-        
+    _startCopy: function( storyFormattedID ) {
+        console.log( storyFormattedID );
+        SingleDeepCopy( storyFormattedID );
     }
-    
-
 });
