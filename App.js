@@ -54,7 +54,6 @@ Ext.define('CustomApp', {
                     for (index=0; index<records.length; index++) {
                         MyApp.epicList.push( records[index].data.FormattedID + ": " + records[index].data.Name );
                     }
-                    //Ext.getBody().mask("Loading...");
                     MyApp._drawEpicComboBox();
                 }
             }
@@ -72,7 +71,6 @@ Ext.define('CustomApp', {
                 'change': function(combo, newVal) {
                     MyApp.selectedEpic = newVal.split(":")[0];
 
-                    //Ext.getBody().mask("Loading...");
                     MyApp._loadPortfolioMMFs();
                 }
             }
@@ -86,8 +84,8 @@ Ext.define('CustomApp', {
         
         MyApp.programPane.add(MyApp.epicCombo);
         
-        //MyApp.epicCombo.setValue(MyApp.epicList[0]);
-        MyApp.epicCombo.setValue(MyApp.epicList[1]);
+        MyApp.epicCombo.setValue(MyApp.epicList[0]);
+        //MyApp.epicCombo.setValue(MyApp.epicList[1]); //TESTING ONLY
     },
 
     _loadPortfolioMMFs: function() {
@@ -156,9 +154,8 @@ Ext.define('CustomApp', {
 
         MyApp.programPane.add(MyApp.mmfCombo);
 
-        //MyApp._loadPortfolioFeatures();
-        //MyApp.mmfCombo.setValue(MyApp.mmfList[0]);
-        MyApp.mmfCombo.setValue(MyApp.mmfList[1]);
+        MyApp.mmfCombo.setValue(MyApp.mmfList[0]);
+        //MyApp.mmfCombo.setValue(MyApp.mmfList[1]);//TESTING ONLY
     },
 
     _loadPortfolioFeatures: function() {
@@ -226,8 +223,8 @@ Ext.define('CustomApp', {
 
         MyApp.programPane.add(MyApp.featureCombo);
 
-        //MyApp.featureCombo.setValue(MyApp.featureList[0]);
-        MyApp.featureCombo.setValue(MyApp.featureList[1]);
+        MyApp.featureCombo.setValue(MyApp.featureList[0]);
+        //MyApp.featureCombo.setValue(MyApp.featureList[1]);// TESTING ONLY
         
         MyApp._drawCopyButton();
     },

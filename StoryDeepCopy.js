@@ -6,8 +6,8 @@ DeepCopyUserStories = function(userStoryList) {
         '__PROJECT_SCOPING_UP__',
         '__PROJECT_SCOPING_DOWN__' );
 
-    //for ( cnt = 0; cnt < userStoryList.length; cnt++ ) {
-    for (cnt = 0; cnt < 1; cnt++) { // TEST
+    for ( cnt = 0; cnt < userStoryList.length; cnt++ ) {
+    //for (cnt = 0; cnt < 1; cnt++) { // TESTING ONLY
         console.log("Copy " + userStoryList[cnt]);
         var queryArray = [];
         queryArray.push({
