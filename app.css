@@ -7,6 +7,12 @@
 }
 
 .epicList {
+    padding-top: 25px;
+    float: left;
+    width: 100%;
+}
+
+.storyList {
     float: left;
     width: 100%;
 }
