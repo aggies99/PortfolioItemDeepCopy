@@ -5,6 +5,8 @@ Ext.define('CustomApp', {
     launch: function() {
         MyApp = this;
         
+        StartStoryDeepCopyApp();
+        
         MyApp.globalContext = this.getContext().getDataContext();
         
         MyApp.epicList = [];
@@ -16,7 +18,7 @@ Ext.define('CustomApp', {
         MyApp.featureList = [];
         MyApp.defaultFeature = MyApp.selectedFeature = "All Features";
         MyApp.featureList.push( MyApp.selectedFeature );
-        
+        MyApp.userStoriesList = [];
 
         // Load the program list and create the program combobox
         MyApp._loadPortfolioEpics();
@@ -230,7 +232,6 @@ Ext.define('CustomApp', {
         MyApp.featureCombo.setValue(MyApp.featureList[1]);
         
         MyApp._drawCopyButton();
-        //Ext.getBody().unmask();
     },
     
     _determineWhatToCopy: function() {
@@ -257,10 +258,12 @@ Ext.define('CustomApp', {
             MyApp.programPane.remove(MyApp.copyButton);
         }
         
+        MyApp._determineWhatToCopy();
+        
         MyApp.copyButton = Ext.create('Ext.Container', {
             items: [{
                 xtype: 'rallybutton',
-                text: 'Copy ' + MyApp._determineWhatToCopy(),
+                text: 'Copy ' + MyApp.CopyId,
                 handler: MyApp._copyButtonHandler
             }]
         });
@@ -281,17 +284,16 @@ Ext.define('CustomApp', {
                 MyApp.featuresToCopy[index-1] = MyApp.featureList[index].split(":")[0];
             }
         }
-    
+
         for (index=0; index<MyApp.featuresToCopy.length; index++) {
-            MyApp.singleFeatureToCopy = MyApp.featuresToCopy[index];
-            MyApp._userStoryDeepCopy( 1 );
+            MyApp.userStoriesList.length = 0;
+            MyApp._userStoryDeepCopy( MyApp.featuresToCopy[index] );
         }
     },
     
-    _userStoryDeepCopy: function ( currentPage ) {
+    _userStoryDeepCopy: function ( featureID ) {
         thisStore = Ext.create('Rally.data.WsapiDataStore', {
-            pageSize: 1,    // Load 1 page at a time
-            limit: 1,       // Limit to 1
+            autoLoad: true,
 
             model: "UserStory",
             
@@ -301,7 +303,7 @@ Ext.define('CustomApp', {
                 {
                     property: 'Feature.FormattedID',
                     operator: '=',
-                    value: MyApp.singleFeatureToCopy
+                    value: featureID
                 },
                 {
                     property: 'Parent',
@@ -312,27 +314,14 @@ Ext.define('CustomApp', {
             
             listeners: {
                 load: function( myStore, records ) {
-                    console.log( records );
-
-                    // If there are items, then copy them
-                    if ( myStore.totalCount > 0 ) {
-                        MyApp._startCopy( records[0].data.FormattedID );
-                        
-                        // Load the next until all pages are loaded
-                        if ( myStore.currentPage < myStore.totalCount )
-                        {
-                            MyApp._userStoryDeepCopy( myStore.currentPage+1 );
-                        }
+                    var index=0;
+                    for (index=0; index<records.length; index++) {
+                        MyApp.userStoriesList.push( records[index].data.FormattedID );
                     }
+                    
+                    StartStoryDeepCopy( MyApp.userStoriesList );
                 }
             }
         });
-        
-        thisStore.loadPage( currentPage );
-    },
-    
-    _startCopy: function( storyFormattedID ) {
-        console.log( storyFormattedID );
-        SingleDeepCopy( storyFormattedID );
     }
 });
