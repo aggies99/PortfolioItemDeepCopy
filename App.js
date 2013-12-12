@@ -5,8 +5,6 @@ Ext.define('CustomApp', {
     launch: function() {
         MyApp = this;
         
-        StartStoryDeepCopyApp();
-        
         MyApp.globalContext = this.getContext().getDataContext();
         
         MyApp.epicList = [];
@@ -285,13 +283,14 @@ Ext.define('CustomApp', {
             }
         }
 
+        // For each feature, start to copy all the user story children
         for (index=0; index<MyApp.featuresToCopy.length; index++) {
             MyApp.userStoriesList.length = 0;
-            MyApp._userStoryDeepCopy( MyApp.featuresToCopy[index] );
+            MyApp._feastureCopyChildrenUserStories( MyApp.featuresToCopy[index] );
         }
     },
     
-    _userStoryDeepCopy: function ( featureID ) {
+    _feastureCopyChildrenUserStories: function ( featureID ) {
         thisStore = Ext.create('Rally.data.WsapiDataStore', {
             autoLoad: true,
 
@@ -319,7 +318,7 @@ Ext.define('CustomApp', {
                         MyApp.userStoriesList.push( records[index].data.FormattedID );
                     }
                     
-                    StartStoryDeepCopy( MyApp.userStoriesList );
+                    DeepCopyUserStories( MyApp.userStoriesList );
                 }
             }
         });

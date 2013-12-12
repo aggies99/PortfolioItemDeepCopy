@@ -1,12 +1,10 @@
-StartStoryDeepCopyApp = function() {
+DeepCopyUserStories = function(userStoryList) {
+
     MyApp.rallyDataSource = new rally.sdk.data.RallyDataSource (
         '__WORKSPACE_OID__',
         '__PROJECT_OID__',
         '__PROJECT_SCOPING_UP__',
         '__PROJECT_SCOPING_DOWN__' );
-},
-
-StartStoryDeepCopy = function(userStoryList) {
 
     //for ( cnt = 0; cnt < userStoryList.length; cnt++ ) {
     for (cnt = 0; cnt < 1; cnt++) { // TEST
@@ -17,13 +15,13 @@ StartStoryDeepCopy = function(userStoryList) {
             type: 'hierarchicalrequirements',
             query: '( FormattedID = ' + userStoryList[cnt] + ')'
         });
-        MyApp.rallyDataSource.find(queryArray, SingleDeepCopy);
+        MyApp.rallyDataSource.find(queryArray, DeepCopySingleStory);
     }
     
     return MyApp.storyCopyList;
 },
 
-SingleDeepCopy = function(results) {
+DeepCopySingleStory = function(results) {
     var copy = new rally.StoryDeepCopy(MyApp.rallyDataSource, undefined);
     copy.copyStory(rally.sdk.util.Ref.getRelativeRef(results.userStory[0]), undefined);
 },

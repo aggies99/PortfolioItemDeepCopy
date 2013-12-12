@@ -14,6 +14,8 @@
     launch: function() {
         MyApp = this;
         
+        StartStoryDeepCopyApp();
+        
         MyApp.globalContext = this.getContext().getDataContext();
         
         MyApp.epicList = [];
@@ -25,7 +27,7 @@
         MyApp.featureList = [];
         MyApp.defaultFeature = MyApp.selectedFeature = "All Features";
         MyApp.featureList.push( MyApp.selectedFeature );
-        
+        MyApp.userStoriesList = [];
 
         // Load the program list and create the program combobox
         MyApp._loadPortfolioEpics();
@@ -239,7 +241,6 @@
         MyApp.featureCombo.setValue(MyApp.featureList[1]);
         
         MyApp._drawCopyButton();
-        //Ext.getBody().unmask();
     },
     
     _determineWhatToCopy: function() {
@@ -266,10 +267,12 @@
             MyApp.programPane.remove(MyApp.copyButton);
         }
         
+        MyApp._determineWhatToCopy();
+        
         MyApp.copyButton = Ext.create('Ext.Container', {
             items: [{
                 xtype: 'rallybutton',
-                text: 'Copy ' + MyApp._determineWhatToCopy(),
+                text: 'Copy ' + MyApp.CopyId,
                 handler: MyApp._copyButtonHandler
             }]
         });
@@ -290,17 +293,17 @@
                 MyApp.featuresToCopy[index-1] = MyApp.featureList[index].split(":")[0];
             }
         }
-    
+
+        // For each feature, start to copy all the user story children
         for (index=0; index<MyApp.featuresToCopy.length; index++) {
-            MyApp.singleFeatureToCopy = MyApp.featuresToCopy[index];
-            MyApp._userStoryDeepCopy( 1 );
+            MyApp.userStoriesList.length = 0;
+            MyApp._feastureCopyChildrenUserStories( MyApp.featuresToCopy[index] );
         }
     },
     
-    _userStoryDeepCopy: function ( currentPage ) {
+    _feastureCopyChildrenUserStories: function ( featureID ) {
         thisStore = Ext.create('Rally.data.WsapiDataStore', {
-            pageSize: 1,    // Load 1 page at a time
-            limit: 1,       // Limit to 1
+            autoLoad: true,
 
             model: "UserStory",
             
@@ -310,7 +313,7 @@
                 {
                     property: 'Feature.FormattedID',
                     operator: '=',
-                    value: MyApp.singleFeatureToCopy
+                    value: featureID
                 },
                 {
                     property: 'Parent',
@@ -321,43 +324,51 @@
             
             listeners: {
                 load: function( myStore, records ) {
-                    console.log( records );
-
-                    // If there are items, then copy them
-                    if ( myStore.totalCount > 0 ) {
-                        MyApp._startCopy( records[0].data.FormattedID );
-                        
-                        // Load the next until all pages are loaded
-                        if ( myStore.currentPage < myStore.totalCount )
-                        {
-                            MyApp._userStoryDeepCopy( myStore.currentPage+1 );
-                        }
+                    var index=0;
+                    for (index=0; index<records.length; index++) {
+                        MyApp.userStoriesList.push( records[index].data.FormattedID );
                     }
+                    
+                    StartStoryDeepCopy( MyApp.userStoriesList );
                 }
             }
         });
-        
-        thisStore.loadPage( currentPage );
-    },
-    
-    _startCopy: function( storyFormattedID ) {
-        console.log( storyFormattedID );
-        SingleDeepCopy( storyFormattedID );
     }
 });
 
-                
-SingleDeepCopy = function ( selectedValue ) {
-    var dataSource = new rally.sdk.data.RallyDataSource('__WORKSPACE_OID__', 
-                                                              '__PROJECT_OID__',
-                                                              '__PROJECT_SCOPING_UP__', 
-                                                              '__PROJECT_SCOPING_DOWN__');
-    
-    var copy = new rally.StoryDeepCopy(dataSource, config );
-    copy.copyStory(rally.sdk.util.Ref.getRelativeRef(selectedValue), storyCopied);
+                StartStoryDeepCopyApp = function() {
+    MyApp.rallyDataSource = new rally.sdk.data.RallyDataSource (
+        '__WORKSPACE_OID__',
+        '__PROJECT_OID__',
+        '__PROJECT_SCOPING_UP__',
+        '__PROJECT_SCOPING_DOWN__' );
 },
 
-rally.StoryDeepCopy = function (rallyDataSource, config) {
+StartStoryDeepCopy = function(userStoryList) {
+
+    //for ( cnt = 0; cnt < userStoryList.length; cnt++ ) {
+    for (cnt = 0; cnt < 1; cnt++) { // TEST
+        console.log("Copy " + userStoryList[cnt]);
+        var queryArray = [];
+        queryArray.push({
+            key: 'userStory',
+            type: 'hierarchicalrequirements',
+            query: '( FormattedID = ' + userStoryList[cnt] + ')'
+        });
+        MyApp.rallyDataSource.find(queryArray, SingleDeepCopy);
+    }
+    
+    return MyApp.storyCopyList;
+},
+
+SingleDeepCopy = function(results) {
+    var copy = new rally.StoryDeepCopy(MyApp.rallyDataSource, undefined);
+    copy.copyStory(rally.sdk.util.Ref.getRelativeRef(results.userStory[0]), undefined);
+},
+
+rally.StoryDeepCopy = function(rallyDataSource, config) {
+    console.log("StoreDeepCopy");
+
     var storyBuffer = [];
     var firstStory = null;
     var finishedCallback;
@@ -374,7 +385,6 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
         }
     }
 
-    //dojo.connect(obj, event, context, method, dontFix);
     this._fireEvent = function(eventName, eventArgs) {
 
         if (config && config.eventListeners[eventName] && dojo.isFunction(config.eventListeners[eventName])) {
@@ -383,7 +393,7 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
     };
 
     // removes private and read only fields to keep from pushing them up.
-    this.filterObject = function (object) {
+    this.filterObject = function(object) {
         delete object.Discussion;
         delete object.Rank;
         delete object.LastUpdateDate;
@@ -412,6 +422,7 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
     this._addObject = function(object, typeName, callback) {
         var item = dojo.clone(object);
         item = this.filterObject(item);
+
         function errorFunctionWrapper(error) {
             if (dojo.isArray(error.Errors)) {
                 var errorMessage = error.Errors.pop();
@@ -420,7 +431,7 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
                 }
                 rally.sdk.ui.AppHeader.showMessage("error", errorMessage, 10000);
             }
-            else if(dojo.isObject(error)&&error.message){
+            else if (dojo.isObject(error) && error.message) {
                 rally.sdk.ui.AppHeader.showMessage("error", error.message, 10000);
                 error = [error.message];
             }
@@ -429,8 +440,8 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
             }
         }
 
-        console.log( "addObject" );
-        //rallyDataSource.create(typeName, item, callback, errorFunctionWrapper);
+        console.log("addObject", typeName, item);
+        //MyApp.rallyDataSource.create(typeName, item, callback, errorFunctionWrapper);
     };
 
     this._copyAllFromBuffer = function() {
@@ -446,7 +457,7 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
     };
 
     this._addStoriesToBuffer = function(storyArray, parentRef) {
-        dojo.forEach(storyArray, function (story) {
+        dojo.forEach(storyArray, function(story) {
             storyBuffer.push({
                 ref: story._ref,
                 parent: parentRef
@@ -455,16 +466,20 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
     };
 
     this._copyStory = function(ref, parentRef, callback) {
-        rallyDataSource.getRallyObject(ref, function (foundObject) {
+
+
+        MyApp.rallyDataSource.getRallyObject(ref, function(foundObject) {
             var type = getTypeFromRef(ref);
-            that._fireEvent("storyPreAdd", {story:foundObject});
+            that._fireEvent("storyPreAdd", {
+                story: foundObject
+            });
             if (parentRef) {
                 foundObject.Parent = parentRef;
             }
             else {
                 foundObject.Name = "(Copy of) " + foundObject.Name;
             }
-            that._addObject(foundObject, type, function (storyRef) {
+            that._addObject(foundObject, type, function(storyRef) {
                 if (!firstStory) {
                     firstStory = storyRef;
                 }
@@ -480,7 +495,7 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
         var localTasks = tasks.slice(0);
         if (localTasks.length > 0) {
             var task = localTasks.pop();
-            that._copyTask(task._ref, storyRef, function () {
+            that._copyTask(task._ref, storyRef, function() {
                 that._copyTasksToStory(localTasks, storyRef, callback);
             });
         }
@@ -490,11 +505,13 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
     };
 
     this._copyTask = function(ref, storyRef, callback) {
-        rallyDataSource.getRallyObject(ref, function (foundObject) {
+        MyApp.rallyDataSource.getRallyObject(ref, function(foundObject) {
             var type = getTypeFromRef(ref);
             foundObject.WorkProduct = storyRef;
-            that._fireEvent("taskPreAdd", {task:foundObject});
-            that._addObject(foundObject, type, function (ref, warnings) {
+            that._fireEvent("taskPreAdd", {
+                task: foundObject
+            });
+            that._addObject(foundObject, type, function(ref, warnings) {
                 if (callback) {
                     that._fireEvent("taskPostAdd", [ref]);
                     callback();
@@ -503,7 +520,8 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
         });
     };
 
-    this.copyStory = function (ref, callback) {
+    this.copyStory = function(ref, callback) {
+        console.log(ref, callback);
         that._copyStory(ref, undefined, that._copyAllFromBuffer);
         finishedCallback = callback;
     };
@@ -528,10 +546,15 @@ rally.StoryDeepCopy = function (rallyDataSource, config) {
 }
 
 .epicList {
+    padding-top: 25px;
     float: left;
     width: 100%;
 }
 
+.storyList {
+    float: left;
+    width: 100%;
+}
     </style>
 </head>
 <body></body>
